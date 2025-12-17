@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 25.8.2.2 (Linux)"/>
+	<meta name="created" content="2025-12-17T17:41:52.373750993"/>
+	<meta name="changed" content="2025-12-17T17:42:39.985072427"/>
+	<style type="text/css">
+		@page { size: 8.5in 11in; margin: 0.79in }
+		p { margin-bottom: 0.1in; line-height: 115%; background: transparent }
+		h3 { margin-top: 0.1in; margin-bottom: 0.08in; background: transparent; page-break-after: avoid }
+		h3.western { font-family: "Liberation Serif", serif; font-size: 14pt; font-weight: bold }
+		h3.cjk { font-family: "Noto Serif CJK SC"; font-size: 14pt; font-weight: bold }
+		h3.ctl { font-size: 14pt; font-family: "Noto Sans Devanagari"; font-weight: bold }
+		h2 { margin-top: 0.14in; margin-bottom: 0.08in; background: transparent; page-break-after: avoid }
+		h2.western { font-family: "Liberation Serif", serif; font-size: 18pt; font-weight: bold }
+		h2.cjk { font-family: "Noto Serif CJK SC"; font-size: 18pt; font-weight: bold }
+		h2.ctl { font-size: 18pt; font-family: "Noto Sans Devanagari"; font-weight: bold }
+		strong { font-weight: bold }
+		em { font-style: italic }
+		a:link { color: #000080; text-decoration: underline }
+		code.western { font-family: "Liberation Mono", monospace }
+		code.cjk { font-family: "Noto Sans Mono CJK SC", monospace }
+		code.ctl { font-family: "Liberation Mono", monospace }
+	</style>
+</head>
+<body lang="en-US" link="#000080" vlink="#800000" dir="ltr"><h3 class="western">
+Where “FromBin” in a BAQ usually comes from</h3>
+<p>In the common <strong>manufacturing pick / issue-to-job</strong>
+flow in Epicor, the “from” location is typically sourced from the
+<strong>material request / material queue</strong> record (the thing
+driving the request), and/or from the <strong>inventory-by-bin</strong>
+record (the thing proving what’s actually on-hand).</p>
+<p>Concretely, in many implementations:</p>
+<ul>
+	<li><p><strong>Material Request Queue / Material Queue</strong>
+	holds the <em>requested</em> “from” location fields (users can
+	pick/adjust a From Bin during fulfillment). You’ll often see
+	people discussing “From Bin” in the context of the Material
+	Request Queue screen and its backing data. <a href="https://www.epiusers.help/t/adding-qtyonhand-to-material-request-queue/113302" target="_blank">Epicor
+	User Help Forum</a></p></li>
+	<li><p><strong>PartBin</strong> holds the <em>actual</em> on-hand by
+	<strong>Part + Warehouse + Bin</strong> (QtyOnHand, etc.), and is
+	frequently joined in BAQs to show availability by bin. <a href="https://www.epiusers.help/t/total-onhandqty/103538" target="_blank">Epicor
+	User Help Forum+1</a></p></li>
+</ul>
+<p>So: if your BAQ has a field literally called <strong>FromBin</strong>,
+it’s <em>very often</em> coming from the “request/queue” side;
+if your BAQ is showing <strong>BinNum / QtyOnHand</strong> it’s
+often coming from <strong>PartBin</strong>.</p>
+<hr/>
+
+<h2 class="western">Adding <code class="western">DeviceID</code> onto
+<code class="western">Erp.PartBin</code> (database enhancement)</h2>
+<h3 class="western">Best-practice Epicor way: add a UD column to
+PartBin</h3>
+<ol>
+	<li><p>In <strong>UD Field/Column Maintenance</strong>, add a UD
+	column to the <strong>Erp.PartBin</strong> table:</p>
+	<ul>
+		<li><p>Field name: <code class="western">DeviceID</code> (Epicor
+		will surface it as something like <code class="western">DeviceID_c</code>)</p></li>
+		<li><p>Type: likely <code class="western">nvarchar</code>/string
+		(whatever length your Voodoo Device IDs need)</p></li>
+	</ul>
+	<li><p>Regenerate/rebuild the data model so the new field physically
+	exists and becomes bindable in UI datasets (in Epicor Cloud this is
+	often a support-requested rebuild; on-prem it’s an admin action +
+	appserver recycle). <a href="https://www.epiusers.help/t/ud-field-customer-maintenance-on-the-cloud/65358" target="_blank">Epicor
+	User Help Forum</a></p></li>
+	<li><p>Confirm it appears everywhere you need it:</p>
+	<ul>
+		<li><p>Classic UI EpiBinding fields</p></li>
+		<li><p>Kinetic dataview / layers</p></li>
+	</ul>
+</ol>
+<p>That gives you a real field <strong>on the PartBin row</strong>,
+which is nice because it’s exactly where a worker thinks about it:
+“this <em>bin</em> has a <em>device</em> assigned.”</p>
+<hr/>
+
+<h2 class="western">Enhancing the GUI so workers can edit <code class="western">DeviceID_c</code></h2>
+<h3 class="western">Option A (fastest): Kinetic personalization for
+specific users/roles</h3>
+<ul>
+	<li><p>If the UD column is in the dataview, users can often add it
+	as a column/field via personalization. <a href="https://www.epiusers.help/t/kinetic-adding-existing-ud-fields-to-order-entry-screen/121735" target="_blank">Epicor
+	User Help Forum</a><br/>
+Downside: it’s per-user (unless you
+	manage personalization deployment carefully).</p></li>
+</ul>
+<h3 class="western">Option B (better operationally): Kinetic
+customization layer so it’s “just there”</h3>
+<ol>
+	<li><p>Open the relevant Kinetic screen (commonly something like <strong>Bin
+	Maintenance</strong>, <strong>Part Bin</strong>, or whatever your
+	team uses operationally).</p></li>
+	<li><p>Create a <strong>Customization Layer</strong> that:</p>
+	<ul>
+		<li><p>Adds a text field labeled <strong>Device ID</strong></p></li>
+		<li><p>Binds it to <code class="western">PartBin.DeviceID_c</code></p></li>
+		<li><p>Makes it editable</p></li>
+	</ul>
+	<li><p>Add basic guardrails:</p>
+	<ul>
+		<li><p>Only allow edit for the warehouse worker security group</p></li>
+		<li><p>Optional: validate format (length/prefix/checksum) and show
+		an error if invalid</p></li>
+		<li><p>Optional: uniqueness rule (one DeviceID can only exist in
+		one bin) enforced via BPM/DB constraint</p></li>
+	</ul>
+</ol>
+<p>This approach is specifically recommended when you want fields
+visible “by default” to everyone who uses that screen, instead of
+relying on each user’s personalization. <a href="https://www.epiusers.help/t/kinetic-adding-existing-ud-fields-to-order-entry-screen/121735" target="_blank">Epicor
+User Help Forum</a></p>
+<h3 class="western">Option C (often best for the floor): a tiny
+“Device Assignment” app/dashboard</h3>
+<p>Instead of exposing PartBin maintenance, make a purpose-built
+page:</p>
+<ul>
+	<li><p>Scan <strong>Bin barcode</strong> (or type Warehouse+Bin)</p></li>
+	<li><p>Scan/enter <strong>DeviceID</strong></p></li>
+	<li><p>Save (updates PartBin.DeviceID_c)<br/>
+This is usually done
+	with a <strong>BAQ + Updateable BAQ (UBAQ)</strong> and/or a small
+	REST call + BPM validation.</p></li>
+</ul>
+<hr/>
+
+<h2 class="western">One important design decision before you commit
+to PartBin</h2>
+<p>Storing DeviceID on <strong>PartBin</strong> means the assignment
+is per <em>Part+Bin+Warehouse</em>. If your bins contain multiple
+parts, or your “device belongs to the physical bin regardless of
+part,” you may prefer to store DeviceID against the <strong>Bin
+master</strong> (if you have one) or a small UD table keyed by
+<code class="western">(WarehouseCode, BinNum)</code>.</p>
+<p>If your operation is “one device mounted to a physical bin
+location,” that bin-keyed approach is often cleaner. If your
+operation is “device attached to a part/bin pair,” PartBin is
+fine.</p>
+<p style="line-height: 100%; margin-bottom: 0in"><br/>
+
+</p>
+</body>
+</html>

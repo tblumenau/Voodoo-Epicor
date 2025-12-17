@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 25.8.2.2 (Linux)"/>
+	<meta name="created" content="2025-12-17T17:20:45.306659287"/>
+	<meta name="changed" content="2025-12-17T17:26:39.774094288"/>
+	<style type="text/css">
+		@page { size: 8.5in 11in; margin: 0.79in }
+		p { margin-bottom: 0.1in; line-height: 115%; background: transparent }
+		h2 { margin-top: 0.14in; margin-bottom: 0.08in; background: transparent; page-break-after: avoid }
+		h2.western { font-family: "Liberation Serif", serif; font-size: 18pt; font-weight: bold }
+		h2.cjk { font-family: "Noto Serif CJK SC"; font-size: 18pt; font-weight: bold }
+		h2.ctl { font-size: 18pt; font-family: "Noto Sans Devanagari"; font-weight: bold }
+		h1 { margin-bottom: 0.08in; background: transparent; page-break-after: avoid }
+		h1.western { font-family: "Liberation Serif", serif; font-size: 24pt; font-weight: bold }
+		h1.cjk { font-family: "Noto Serif CJK SC"; font-size: 24pt; font-weight: bold }
+		h1.ctl { font-size: 24pt; font-family: "Noto Sans Devanagari"; font-weight: bold }
+		h3 { margin-top: 0.1in; margin-bottom: 0.08in; background: transparent; page-break-after: avoid }
+		h3.western { font-family: "Liberation Serif", serif; font-size: 14pt; font-weight: bold }
+		h3.cjk { font-family: "Noto Serif CJK SC"; font-size: 14pt; font-weight: bold }
+		h3.ctl { font-size: 14pt; font-family: "Noto Sans Devanagari"; font-weight: bold }
+		strong { font-weight: bold }
+		a:link { color: #000080; text-decoration: underline }
+		code.western { font-family: "Liberation Mono", monospace }
+		code.cjk { font-family: "Noto Sans Mono CJK SC", monospace }
+		code.ctl { font-family: "Liberation Mono", monospace }
+		em { font-style: italic }
+	</style>
+</head>
+<body lang="en-US" link="#000080" vlink="#800000" dir="ltr"><h2 class="western">
+What the kitting worker actually does in the Epicor GUI (typical)</h2>
+<p>There are a couple variants, but the common pattern looks like:</p>
+<ol>
+	<li><p><strong>Demand is created</strong> (job materials need to be
+	issued to a job/assembly).</p></li>
+	<li><p>Epicor creates <strong>Material Queue</strong> records
+	(think: “work to pick/issue”).</p></li>
+	<li><p>A warehouse/materials person opens <strong>Material Request
+	Queue / My Material Queue</strong> (or similar Kinetic “Material
+	Queue” app) and processes lines (pick/issue). <a href="https://docs.biscit.com/epicor-kinetic-warehouse/epicor-kinetic-warehouse-user-guide/material-queues-mtl-queues" target="_blank">BISCIT+1</a></p></li>
+	<li><p>In practice, they often <strong>scan the Material Queue
+	sequence/ID</strong> to pull up the exact record(s) to process.
+	<a href="https://www.epiusers.help/t/how-do-you-pick-an-order/84511" target="_blank">Epicor
+	User Help Forum+1</a></p></li>
+</ol>
+<p>Epicor’s Fulfillment Workbench is commonly used as the
+“allocator/releaser” that feeds these queues for Jobs (and Sales
+Orders / Transfers). <a href="https://www.estesgrp.com/blog/manage-inventory-using-epicor-fulfillment-workbench/" target="_blank">estesgrp.com</a></p>
+<h2 class="western">What this means in the Epicor database (typical)</h2>
+<p>The data you usually need comes from a join like:</p>
+<ul>
+	<li><p><strong>Material Queue</strong> table (often named something
+	like <code class="western">MtlQueue</code>)<br/>
+Holds the
+	queue/sequence ID and the demand reference (job/assembly/material
+	line), plus “from” location hints (warehouse/bin) depending on
+	configuration.</p></li>
+	<li><p><strong>Job material requirement</strong> table (often
+	<code class="western">JobMtl</code>)<br/>
+Holds the BOM requirement:
+	part, qty required, qty issued, assembly, etc.</p></li>
+	<li><p><strong>Part master</strong> (often
+	<code class="western">Part</code>)<br/>
+Description/UOM/etc.</p></li>
+	<li><p><strong>Bin/location inventory</strong> (often <code class="western">PartBin</code>
+	and bin/warehouse tables)<br/>
+Where it can be picked from; on-hand
+	by bin.</p></li>
+</ul>
+<p>Exact field names vary by version/config, but this is the standard
+conceptual model Epicor users build BAQs against (and Epicor even
+teaches “how to find/link tables” via field help /
+relationships). <a href="https://www.youtube.com/watch?v=Bc-mHYG2Z6g&amp;utm_source=chatgpt.com" target="_blank">YouTube</a></p>
+<h2 class="western">“Pick List” — does it have an ID? Is it
+stored in a table?</h2>
+<p>In many Epicor shops, the thing that gets printed and handed to a
+picker is effectively a <strong>pick list report</strong> <em>for</em>
+either:</p>
+<ul>
+	<li><p>a <strong>Job</strong>, or</p></li>
+	<li><p>a set of <strong>Material Queue</strong> records</p></li>
+</ul>
+<p>…and the ID you can reliably scan is commonly the <strong>Material
+Queue sequence/ID</strong>. <a href="https://www.epiusers.help/t/how-do-you-pick-an-order/84511" target="_blank">Epicor
+User Help Forum+1</a></p>
+<p>So: yes, there’s an ID, but the ID you’ll want to target in
+your integration is often <strong>Queue ID / MtlQueueSeq</strong>.</p>
+<h2 class="western">Does the printout have a barcode?</h2>
+<p>Often <strong>yes</strong> in real deployments (because scanning
+is common), but whether the barcode prints by default depends on:</p>
+<ul>
+	<li><p>which report they use (Job Pick List vs queue-driven
+	picking),</p></li>
+	<li><p>and how the report was customized.</p></li>
+</ul>
+<p>What we <em>can</em> say confidently is that scanning the queue
+sequence/ID is a normal workflow people mention in Epicor
+environments. <a href="https://www.epiusers.help/t/how-do-you-pick-an-order/84511" target="_blank">Epicor
+User Help Forum+1</a></p>
+<hr/>
+
+<h1 class="western">The clean integration approach for a Python
+program</h1>
+<p>You want: input ID → return lines with <strong>SKU/desc, qty,
+pick location</strong>.</p>
+<p>The most robust way to do this in Epicor is:</p>
+<ol>
+	<li><p><strong>Create a BAQ</strong> (Business Activity Query) that
+	accepts a parameter like <code class="western">QueueID</code> (or
+	<code class="western">JobNum</code>) and returns exactly the columns
+	you want.</p></li>
+	<li><p>Call that BAQ via <strong>Epicor REST</strong> from Python.</p></li>
+</ol>
+<p>Epicor folks explicitly recommend BAQSvc as an
+integration-friendly “schema-controlled endpoint.” <a href="https://www.epiusers.help/t/using-rest-in-an-integration/46209" target="_blank">Epicor
+User Help Forum</a></p>
+<h2 class="western">REST endpoint shape (what you’ll hit)</h2>
+<p>Two common patterns you’ll see in the wild:</p>
+<h3 class="western">Pattern A: REST v2 OData BAQ endpoint</h3>
+<p>Example shared by Epicor
+users:<br/>
+<code class="western">https://yourserver/.../api/v2/odata/&lt;Company&gt;/BaqSvc/&lt;BAQName&gt;/Data</code>
+<a href="https://www.epiusers.help/t/rest-efx-baq-examples-from-a-python-script/115273" target="_blank">Epicor
+User Help Forum</a></p>
+<h3 class="western">Pattern B: REST v1 BAQ “DataList_…”
+endpoint</h3>
+<p>Example seen in code in the
+community:<br/>
+<code class="western">https://.../api/v1/BaqSvc/DataList_&lt;BAQName&gt;/?Param='...'</code>
+<a href="https://www.epiusers.help/t/rest-api-with-single-sign-on/126873" target="_blank">Epicor
+User Help Forum</a></p>
+<p>Also: your Epicor instance normally exposes interactive
+Swagger/help at a <code class="western">/apps/resthelp/</code> style
+URL. <a href="https://www.epiusers.help/t/list-of-all-business-objects-rest-api/106542" target="_blank">Epicor
+User Help Forum+1</a></p>
+</body>
+</html>
