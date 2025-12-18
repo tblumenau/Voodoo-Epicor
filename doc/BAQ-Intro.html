@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 25.8.2.2 (Linux)"/>
+	<meta name="created" content="2025-12-17T18:15:05.235349597"/>
+	<meta name="changed" content="2025-12-17T18:15:47.013146792"/>
+	<style type="text/css">
+		@page { size: 8.5in 11in; margin: 0.79in }
+		p { margin-bottom: 0.1in; line-height: 115%; background: transparent }
+		h1 { margin-bottom: 0.08in; background: transparent; page-break-after: avoid }
+		h1.western { font-family: "Liberation Serif", serif; font-size: 24pt; font-weight: bold }
+		h1.cjk { font-family: "Noto Serif CJK SC"; font-size: 24pt; font-weight: bold }
+		h1.ctl { font-size: 24pt; font-family: "Noto Sans Devanagari"; font-weight: bold }
+		h2 { margin-top: 0.14in; margin-bottom: 0.08in; background: transparent; page-break-after: avoid }
+		h2.western { font-family: "Liberation Serif", serif; font-size: 18pt; font-weight: bold }
+		h2.cjk { font-family: "Noto Serif CJK SC"; font-size: 18pt; font-weight: bold }
+		h2.ctl { font-size: 18pt; font-family: "Noto Sans Devanagari"; font-weight: bold }
+		h3 { margin-top: 0.1in; margin-bottom: 0.08in; background: transparent; page-break-after: avoid }
+		h3.western { font-family: "Liberation Serif", serif; font-size: 14pt; font-weight: bold }
+		h3.cjk { font-family: "Noto Serif CJK SC"; font-size: 14pt; font-weight: bold }
+		h3.ctl { font-size: 14pt; font-family: "Noto Sans Devanagari"; font-weight: bold }
+		blockquote { margin-right: 0.39in; margin-left: 0.39in; background: transparent }
+		strong { font-weight: bold }
+		em { font-style: italic }
+		code.western { font-family: "Liberation Mono", monospace }
+		code.cjk { font-family: "Noto Sans Mono CJK SC", monospace }
+		code.ctl { font-family: "Liberation Mono", monospace }
+	</style>
+</head>
+<body lang="en-US" link="#000080" vlink="#800000" dir="ltr"><h1 class="western">
+Epicor BAQs: Background, Usage, and Creation Guide</h1>
+<h2 class="western">What is a BAQ?</h2>
+<p>A <strong>BAQ (Business Activity Query)</strong> is Epicor’s
+built&#8209;in query mechanism for retrieving, shaping, and exposing
+business data from the Epicor ERP database <em>without writing raw
+SQL</em>. A BAQ defines <strong>what data to pull</strong>, <strong>how
+tables are joined</strong>, <strong>how data is filtered</strong>,
+and <strong>how results are presented</strong>.</p>
+<p>Think of a BAQ as:</p>
+<ul>
+	<li><p>A <strong>safe, supported abstraction layer</strong> over the
+	Epicor database</p></li>
+	<li><p>A reusable <strong>data contract</strong> that can be
+	consumed by screens, dashboards, reports, BPMs, REST APIs, and
+	external programs</p></li>
+</ul>
+<p>BAQs are central to Epicor’s extensibility story. If you want
+data <em>out</em> of Epicor in a reliable way, a BAQ is usually the
+correct first step.</p>
+<hr/>
+
+<h2 class="western">Why BAQs Exist (Background)</h2>
+<p>Epicor runs on a large, highly&#8209;normalized relational
+database. Allowing users (or integrations) to run arbitrary SQL
+directly would:</p>
+<ul>
+	<li><p>Break upgrades</p></li>
+	<li><p>Bypass security rules</p></li>
+	<li><p>Risk performance problems</p></li>
+	<li><p>Create fragile integrations</p></li>
+</ul>
+<p>BAQs solve this by:</p>
+<ul>
+	<li><p>Enforcing <strong>Epicor security</strong> (row&#8209;level,
+	company, plant)</p></li>
+	<li><p>Remaining <strong>upgrade&#8209;safe</strong></p></li>
+	<li><p>Being <strong>inspectable and supportable</strong> by Epicor
+	admins</p></li>
+	<li><p>Acting as a <strong>stable interface</strong> between Epicor
+	and the outside world</p></li>
+</ul>
+<p>Because of this, Epicor heavily encourages <em>all integrations</em>
+to be built on BAQs rather than direct database access.</p>
+<hr/>
+
+<h2 class="western">How BAQs Are Used</h2>
+<p>BAQs are used in many places inside and outside Epicor:</p>
+<h3 class="western">Inside Epicor</h3>
+<ul>
+	<li><p>Dashboards and grids</p></li>
+	<li><p>SSRS and Crystal Reports</p></li>
+	<li><p>BPMs (Business Process Management)</p></li>
+	<li><p>Data Directives</p></li>
+	<li><p>Kinetic UI widgets</p></li>
+</ul>
+<h3 class="western">Outside Epicor</h3>
+<ul>
+	<li><p>REST API calls (via <code class="western">BAQSvc</code> or
+	OData)</p></li>
+	<li><p>Python, Java, C#, or Node integrations</p></li>
+	<li><p>Warehouse systems (WMS)</p></li>
+	<li><p>MES systems</p></li>
+	<li><p>BI / analytics pipelines</p></li>
+</ul>
+<p>In integrations (like Voodoo ↔ Epicor), a BAQ becomes a <strong>query
+endpoint</strong> that external code can safely call to retrieve
+structured data such as:</p>
+<ul>
+	<li><p>Pick lists</p></li>
+	<li><p>Job materials</p></li>
+	<li><p>Inventory locations</p></li>
+	<li><p>Order lines</p></li>
+</ul>
+<hr/>
+
+<h2 class="western">Types of BAQs</h2>
+<p>Epicor supports several BAQ types, but the most common are:</p>
+<h3 class="western">1. Simple BAQs</h3>
+<ul>
+	<li><p>Read&#8209;only</p></li>
+	<li><p>Query one or more tables</p></li>
+	<li><p>Used for reporting or data extraction</p></li>
+</ul>
+<h3 class="western">2. Parameterized BAQs</h3>
+<ul>
+	<li><p>Accept input parameters (e.g., JobNum, PickListID)</p></li>
+	<li><p>Ideal for integrations and user&#8209;driven queries</p></li>
+</ul>
+<h3 class="western">3. Updatable BAQs (Advanced)</h3>
+<ul>
+	<li><p>Allow controlled updates back into Epicor tables</p></li>
+	<li><p>Require careful setup and permissions</p></li>
+	<li><p>Often used with BPMs</p></li>
+</ul>
+<p>For most integrations, <strong>parameterized, read&#8209;only BAQs</strong>
+are the correct choice.</p>
+<hr/>
+
+<h2 class="western">Core Concepts You Must Understand</h2>
+<h3 class="western">Tables</h3>
+<p>Epicor exposes business entities as tables (e.g., <code class="western">JobHead</code>,
+<code class="western">JobMtl</code>, <code class="western">Part</code>,
+<code class="western">WhseBin</code>). BAQs are built by selecting
+and joining these tables.</p>
+<h3 class="western">Joins</h3>
+<p>You explicitly define how tables relate (inner join, left join,
+etc.). Incorrect joins are the #1 source of bad BAQs.</p>
+<h3 class="western">Filters</h3>
+<p>Filters restrict rows (e.g., only open jobs, only a specific pick
+list).</p>
+<h3 class="western">Display Fields</h3>
+<p>You choose which fields appear in the result set and how they are
+labeled.</p>
+<h3 class="western">Calculated Fields</h3>
+<p>You can add derived fields using Epicor’s expression language.</p>
+<h3 class="western">Parameters</h3>
+<p>Parameters allow external callers or users to inject values at
+runtime.</p>
+<hr/>
+
+<h2 class="western">Step&#8209;by&#8209;Step: Creating a BAQ</h2>
+<h3 class="western">Step 1: Open the BAQ Designer</h3>
+<p>In Epicor:</p>
+<p>System Management → Business Activity Queries</p>
+<p>Create a <strong>New Query</strong> and give it a meaningful ID,
+e.g.:</p>
+<p style="margin-bottom: 0in">Voodoo_PickListDetail</p>
+<hr/>
+
+<h3 class="western">Step 2: Add Tables</h3>
+<ol>
+	<li><p>Go to the <strong>Query Builder</strong> tab</p></li>
+	<li><p>Add your primary table (e.g., <code class="western">JobMtl</code>)</p></li>
+	<li><p>Add related tables (e.g., <code class="western">Part</code>,
+	<code class="western">WhseBin</code>)</p></li>
+</ol>
+<p>Be intentional: only add tables you actually need.</p>
+<hr/>
+
+<h3 class="western">Step 3: Define Joins</h3>
+<p>Explicitly define joins between tables:</p>
+<ul>
+	<li><p>Match on Company</p></li>
+	<li><p>Match on key fields (e.g., <code class="western">JobNum</code>,
+	<code class="western">PartNum</code>)</p></li>
+</ul>
+<p>Use <strong>left joins</strong> when related data may not exist.</p>
+<hr/>
+
+<h3 class="western">Step 4: Select Display Fields</h3>
+<p>Choose fields to expose:</p>
+<ul>
+	<li><p>Identifiers (JobNum, PartNum)</p></li>
+	<li><p>Descriptions</p></li>
+	<li><p>Quantities</p></li>
+	<li><p>Locations</p></li>
+</ul>
+<p>Rename columns to be integration&#8209;friendly:</p>
+<p style="margin-bottom: 0in">Part_PartNum → PartNum</p>
+<p style="margin-bottom: 0in">WhseBin_BinNum → Bin</p>
+<hr/>
+
+<h3 class="western">Step 5: Add Filters</h3>
+<p>Filters restrict rows, for example:</p>
+<ul>
+	<li><p>Only open jobs</p></li>
+	<li><p>Only material lines with quantity remaining</p></li>
+</ul>
+<p>Avoid hard&#8209;coding values when parameters make more sense.</p>
+<hr/>
+
+<h3 class="western">Step 6: Add Parameters (Very Important)</h3>
+<p>Parameters make the BAQ reusable.</p>
+<p>Example parameter:</p>
+<p style="margin-bottom: 0in">Parameter Name: pJobNum</p>
+<p>Type: String</p>
+<p>Then reference it in filters:</p>
+<p>JobMtl.JobNum = @pJobNum</p>
+<p>This allows external programs to pass values dynamically.</p>
+<hr/>
+
+<h3 class="western">Step 7: Test the BAQ</h3>
+<p>Use the <strong>Analyze</strong> or <strong>Test</strong>
+function:</p>
+<ul>
+	<li><p>Enter parameter values</p></li>
+	<li><p>Verify row counts</p></li>
+	<li><p>Check performance</p></li>
+</ul>
+<p>If it’s slow here, it will be slow in production.</p>
+<hr/>
+
+<h3 class="western">Step 8: Secure the BAQ</h3>
+<p>Assign:</p>
+<ul>
+	<li><p>User security</p></li>
+	<li><p>Group security</p></li>
+</ul>
+<p>Remember: integrations run as <em>users</em>. If the user cannot
+run the BAQ, neither can your program.</p>
+<hr/>
+
+<h2 class="western">Using BAQs from External Code</h2>
+<p>Once saved, BAQs can be accessed via:</p>
+<ul>
+	<li><p>Epicor REST (<code class="western">/BAQSvc</code>)</p></li>
+	<li><p>OData endpoints</p></li>
+</ul>
+<p>External code typically:</p>
+<ol>
+	<li><p>Authenticates to Epicor</p></li>
+	<li><p>Calls the BAQ by ID</p></li>
+	<li><p>Passes parameters</p></li>
+	<li><p>Receives JSON or XML</p></li>
+</ol>
+<p>This is how Epicor integrations should be built.</p>
+<hr/>
+
+<h2 class="western">Common Mistakes</h2>
+<ul>
+	<li><p>Too many tables (over&#8209;joining)</p></li>
+	<li><p>Missing Company joins</p></li>
+	<li><p>Hard&#8209;coded filters instead of parameters</p></li>
+	<li><p>Returning far more columns than needed</p></li>
+	<li><p>Not testing with realistic data volume</p></li>
+</ul>
+<hr/>
+
+<h2 class="western">Best Practices</h2>
+<ul>
+	<li><p>Treat BAQs as <strong>APIs</strong>, not ad&#8209;hoc queries</p></li>
+	<li><p>Keep them narrowly focused</p></li>
+	<li><p>Use parameters liberally</p></li>
+	<li><p>Version them carefully</p></li>
+	<li><p>Document their intent</p></li>
+</ul>
+<hr/>
+
+<h2 class="western">Summary</h2>
+<p>BAQs are the <strong>foundation of safe, upgrade&#8209;proof
+Epicor integrations</strong>. They define a clean contract between
+Epicor’s internal data model and the outside world. If you design
+good BAQs, everything built on top of them becomes simpler, faster,
+and more reliable.</p>
+<p>If you remember one thing:</p>
+<blockquote><em>In Epicor, integrations start with BAQs.</em></blockquote>
+<p style="line-height: 100%; margin-bottom: 0in"><br/>
+
+</p>
+</body>
+</html>
