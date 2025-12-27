@@ -29,6 +29,14 @@ often* coming from the “request/queue” side; if your BAQ is showing
 
 ## Adding `DeviceID` onto `Erp.PartBin` (database enhancement)
 
+> **Don’t have to store it in Epicor:** If you simply need a
+> human-readable mapping between bins and device IDs, you can avoid
+> adding a UD column entirely by using the **location naming facility in
+> Big Block**. Name the bin/location to include the DeviceID and let Big
+> Block resolve it—no DeviceID column required in Epicor. If you prefer a
+> first-class field in Epicor for reporting/searching, continue with the
+> steps below.
+
 ### Best-practice Epicor way: add a UD column to PartBin
 
 1.  In **UD Field/Column Maintenance**, add a UD column to the
